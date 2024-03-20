@@ -30,8 +30,11 @@ while cap.isOpened():
     threshold_value = 190
     _, image_binary = cv2.threshold(image_gray, threshold_value, 255, cv2.THRESH_BINARY)
 
+    # 이진화된 이미지에서 흰색 픽셀의 위치를 찾아 원본 이미지에서 해당 위치를 초록색으로 변경합니다.
+    frame[image_binary == 255] = [0, 255, 0]
+
     # 이진화된 영상을 보여줍니다.
-    cv2.imshow('Binary Image', image_binary)
+    cv2.imshow('Binary Image', frame)
 
     if cv2.waitKey(15) & 0xFF == ord('q'):  # 30ms 대기 후 다음 프레임으로, 'q'를 누르면 종료
         break
