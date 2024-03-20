@@ -1,63 +1,47 @@
 import cv2
 import numpy as np
 
-# Open the video file.
+# 비디오 파일을 엽니다.
 cap = cv2.VideoCapture('./dataset/[mix]ORY_20170219_110743_D.avi')
 
-# Retrieve the FPS (frames per second), and the width and height of the video.
+# 비디오의 FPS와 프레임의 크기를 가져옵니다.
 fps = cap.get(cv2.CAP_PROP_FPS)
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-# Calculate the frame numbers for the start and end times.
+# 24초부터 28초까지의 프레임 번호를 계산합니다.
 start_frame = int(24 * fps)
 end_frame = int(28 * fps)
 
-# Create a video writer object to save the processed frames.
+# 비디오 작성을 위한 VideoWriter 객체를 초기화합니다.
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter('output.avi', fourcc, fps, (width, height))
+out = cv2.VideoWriter('hough_to_4_seconds.avi', fourcc, fps, (width, height))
 
-# Initialize the frame number.
-frame_number = 0
-
+current_frame = 0
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
-        break  # End of video or read error
+        break  # 비디오의 끝에 도달했거나 읽기 오류
 
-    # Check if the current frame number is within the start and end frames.
-    if start_frame <= frame_number <= end_frame:
-        # Define the points for the trapezoidal shape.
-        pts = np.array([[700, 400], [0, 400], [width // 2 - 250, 250], [width // 2 + 50, 250]], dtype=np.int32)
-
-        # Create the trapezoidal shape mask.
+    # 현재 프레임 번호가 24초부터 28초 사이인지 확인합니다.
+    if start_frame <= current_frame <= end_frame:
+        # 여기에 프레임 처리 코드 삽입
+        edges = cv2.Canny(frame, 200, 300)
+        pts = np.array([[660, 400], [0, 400], [235, 230], [390, 230]], dtype=np.int32)
         mask = np.zeros((height, width), dtype=np.uint8)
-        cv2.fillPoly(mask, [pts], (255, 255, 255))
+        cv2.fillPoly(mask, [pts], 255)
+        image_masked_edges = cv2.bitwise_and(edges, edges, mask=mask)
+        lines = cv2.HoughLinesP(image_masked_edges, 1, np.pi / 180, threshold=100, minLineLength=100, maxLineGap=100)
+        if lines is not None:
+            for line in lines:
+                x1, y1, x2, y2 = line[0]
+                cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 3)
 
-        # Extend the mask to 3 channels.
-        mask_3d = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-
-        # Combine the mask with the image.
-        image_masked = cv2.bitwise_and(frame, mask_3d)
-
-        # Convert the combined image to grayscale.
-        image_gray = cv2.cvtColor(image_masked, cv2.COLOR_BGR2GRAY)
-
-        # Set the threshold and apply binarization.
-        threshold_value = 190
-        _, image_binary = cv2.threshold(image_gray, threshold_value, 255, cv2.THRESH_BINARY)
-
-        # 이진화된 이미지에서 흰색 픽셀의 위치를 찾아 원본 이미지에서 해당 위치를 초록색으로 변경합니다.
-        frame[image_binary == 255] = [0, 255, 0]
-
-        # Save the modified binarized image.
+        # 해당 프레임을 비디오 파일에 씁니다.
         out.write(frame)
 
-    # Update the frame number.
-    frame_number += 1
-
-    if frame_number > end_frame:
-        break  # Exit the loop after the end time
+    # 프레임 번호를 업데이트합니다.
+    current_frame += 1
 
 cap.release()
 out.release()
